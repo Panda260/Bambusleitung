@@ -13,9 +13,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc \
     && rm -rf /var/lib/apt/lists/*
 
-# Python-Abhängigkeiten in separatem Layer
+# Python-Abhängigkeiten in einem Virtual Environment installieren
+RUN python -m venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+
 COPY backend/requirements.txt .
-RUN pip install --no-cache-dir --user -r requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt
 
 # ─────────────────────────────────────────────────────────────
 # Runtime stage
@@ -31,8 +34,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     iperf3 \
     && rm -rf /var/lib/apt/lists/*
 
-# Python-Pakete aus Builder kopieren
-COPY --from=builder /root/.local /root/.local
+# Python-Pakete (Virtual Environment) aus dem Builder kopieren
+COPY --from=builder /opt/venv /opt/venv
 
 # App-Code kopieren
 WORKDIR /app
@@ -43,7 +46,7 @@ COPY frontend/ ./frontend/
 RUN mkdir -p /data
 
 # Umgebungsvariablen (iperf3-Config kann per docker-compose oder -e überschrieben werden)
-ENV PATH=/root/.local/bin:$PATH \
+ENV PATH="/opt/venv/bin:$PATH" \
     PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
     FLASK_ENV=production \
