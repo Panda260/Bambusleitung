@@ -1,0 +1,50 @@
+services:
+  bambusleitung:
+    image: ghcr.io/Panda260/bambusleitung:latest
+    container_name: bambusleitung
+    restart: unless-stopped
+
+    ports:
+      - "5000:5000"
+
+    volumes:
+      # Persistente Daten: SQLite-Datenbank + Config-JSON
+      - bambusleitung_data:/data
+
+    environment:
+      # ── App ──────────────────────────────────────────────
+      - FLASK_ENV=production
+      - DATA_DIR=/data
+      - PORT=5000
+
+      # ── iperf3 Startkonfiguration ─────────────────────────
+      # Diese Werte werden beim ersten Start als Defaults gesetzt.
+      # Änderungen über die Web-UI werden in /data/config.json gespeichert
+      # und haben Vorrang gegenüber diesen ENV-Werten.
+      - IPERF_TARGET_IP=192.168.1.100 # IP/Hostname des iperf3-Servers
+      - IPERF_TARGET_PORT=5201 # iperf3-Serverport
+      - IPERF_INTERVAL_MINUTES=15 # Intervall in Minuten (Default: 15)
+      - IPERF_TEST_DURATION=10 # Testdauer in Sekunden
+      - IPERF_ENABLED=false # Auto-Tests beim Start aktivieren?
+
+      # ── Web-UI Authentifizierung (optional) ───────────────────
+      # Wenn UI_PASSWORD leer → kein Login nötig
+      - UI_PASSWORD=         # z.B. UI_PASSWORD=geheimesPasswort
+      - SECRET_KEY=          # Flask Session-Key (auto-generiert wenn leer)
+
+    healthcheck:
+      test: [ "CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5000/api/status')" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  bambusleitung_data:
+    driver: local

@@ -1,0 +1,97 @@
+# ─────────────────────────────────────────────────────────────
+# docker-compose-deploy.yml
+# CD: Deploy via SSH auf Remote-Server
+#
+# Benötigte Repository Secrets:
+#   DEPLOY_SSH_HOST    – Hostname/IP des Servers
+#   DEPLOY_SSH_USER    – SSH-Benutzer (z.B. ubuntu)
+#   DEPLOY_SSH_KEY     – Privater SSH-Key (PEM format)
+#   DEPLOY_SSH_PORT    – SSH-Port (optional, default 22)
+#   DEPLOY_PATH        – Pfad auf dem Server (z.B. /opt/bambusleitung)
+# ─────────────────────────────────────────────────────────────
+
+name: 🚀 Deploy via SSH
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Deploy-Umgebung'
+        required: true
+        default: 'production'
+        type: choice
+        options:
+          - production
+          - staging
+  push:
+    branches:
+      - main
+      - master
+    paths-ignore:
+      - '**.md'
+      - '.github/**'
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  deploy:
+    name: Deploy to Server
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.environment || 'production' }}
+    # Nur deployen wenn kein PR
+    if: github.event_name != 'pull_request'
+
+    steps:
+      - name: 📥 Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: 🔑 SSH-Agent einrichten
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.DEPLOY_SSH_KEY }}
+
+      - name: 🔒 Host-Key hinzufügen
+        run: |
+          ssh-keyscan -p ${{ secrets.DEPLOY_SSH_PORT || 22 }} \
+            ${{ secrets.DEPLOY_SSH_HOST }} >> ~/.ssh/known_hosts
+
+      - name: 📂 docker-compose.yml auf Server kopieren
+        run: |
+          scp -P ${{ secrets.DEPLOY_SSH_PORT || 22 }} \
+            docker-compose.yml \
+            ${{ secrets.DEPLOY_SSH_USER }}@${{ secrets.DEPLOY_SSH_HOST }}:${{ secrets.DEPLOY_PATH }}/docker-compose.yml
+
+      - name: 🚀 Deploy via SSH
+        run: |
+          ssh -p ${{ secrets.DEPLOY_SSH_PORT || 22 }} \
+            ${{ secrets.DEPLOY_SSH_USER }}@${{ secrets.DEPLOY_SSH_HOST }} << 'ENDSSH'
+              set -e
+              cd ${{ secrets.DEPLOY_PATH }}
+
+              # Login zu GHCR
+              echo "${{ secrets.GITHUB_TOKEN }}" | \
+                docker login ghcr.io -u ${{ github.actor }} --password-stdin
+
+              # Neues Image ziehen
+              docker compose pull
+
+              # Container neu starten (zero-downtime soweit möglich)
+              docker compose up -d --remove-orphans
+
+              # Alte Images aufräumen
+              docker image prune -f
+
+              echo "✅ Deploy abgeschlossen!"
+              docker compose ps
+          ENDSSH
+
+      - name: 📋 Deploy-Summary
+        run: |
+          echo "### 🚀 Deploy abgeschlossen" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Server:** \`${{ secrets.DEPLOY_SSH_HOST }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **Pfad:** \`${{ secrets.DEPLOY_PATH }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **Commit:** \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **Branch:** \`${{ github.ref_name }}\`" >> $GITHUB_STEP_SUMMARY

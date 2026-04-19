@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>🎋 Bambusleitung – iperf3 Dashboard</title>
+  <meta name="description" content="iperf3 Speedtest Scheduler mit Live-Anzeige, History-Graph und Excel-Export" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+  <link rel="stylesheet" href="/css/style.css" />
+</head>
+<body>
+
+<!-- ═══════════════════ HEADER ═══════════════════ -->
+<!-- ═══════════════════ LOGIN OVERLAY ═══════════════════ -->
+<div class="login-overlay" id="loginOverlay" style="display:none;">
+  <div class="login-card">
+    <div class="login-brand">
+      <span class="login-icon">🎋</span>
+      <h1 class="login-title">Bambusleitung</h1>
+      <p class="login-sub">iperf3 Speedtest Dashboard</p>
+    </div>
+    <div class="login-form">
+      <label class="login-label" for="loginPassword">Passwort</label>
+      <div class="login-input-wrap">
+        <input
+          type="password"
+          id="loginPassword"
+          class="login-input"
+          placeholder="Passwort eingeben..."
+          autocomplete="current-password"
+          onkeydown="if(event.key==='Enter') submitLogin()"
+        />
+        <button class="login-eye" id="loginEyeBtn" onclick="togglePasswordVisibility()" type="button" title="Passwort anzeigen">👁</button>
+      </div>
+      <div class="login-error" id="loginError" style="display:none;"></div>
+      <button class="btn btn-login" id="loginBtn" onclick="submitLogin()">
+        <span id="loginBtnText">🔓 Anmelden</span>
+      </button>
+    </div>
+    <p class="login-hint">Passwort wird per <code>UI_PASSWORD</code> Umgebungsvariable gesetzt</p>
+  </div>
+</div>
+
+<header class="header">
+  <div class="header-inner">
+    <div class="header-brand">
+      <span class="brand-icon">🎋</span>
+      <div>
+        <h1 class="brand-name">Bambusleitung</h1>
+        <p class="brand-sub">iperf3 Speedtest Dashboard</p>
+      </div>
+    </div>
+    <div class="header-status">
+      <div class="status-badge" id="globalStatus">
+        <span class="status-dot" id="statusDot"></span>
+        <span id="statusText">Verbinde...</span>
+      </div>
+      <div class="next-run-badge" id="nextRunBadge" style="display:none;">
+        <span class="icon">⏱</span>
+        <span id="nextRunText">–</span>
+      </div>
+      <button class="btn btn-logout" id="logoutBtn" style="display:none;" onclick="logout()">
+        🔒 Abmelden
+      </button>
+    </div>
+  </div>
+</header>
+
+<main class="main-grid">
+
+  <!-- ═══════════════════ KONFIGURATION ═══════════════════ -->
+  <section class="card card-config" id="section-config">
+    <div class="card-header">
+      <h2 class="card-title"><span class="icon">⚙️</span> Konfiguration</h2>
+    </div>
+    <div class="config-grid">
+      <div class="form-group">
+        <label for="targetIp">Ziel-IP / Hostname</label>
+        <input type="text" id="targetIp" placeholder="192.168.1.100" autocomplete="off" />
+      </div>
+      <div class="form-group">
+        <label for="targetPort">Port (iperf3)</label>
+        <input type="number" id="targetPort" placeholder="5201" min="1" max="65535" />
+      </div>
+      <div class="form-group">
+        <label for="intervalMin">Intervall (Minuten)</label>
+        <input type="number" id="intervalMin" placeholder="60" min="1" max="1440" />
+      </div>
+      <div class="form-group">
+        <label for="testDuration">Testdauer (Sekunden)</label>
+        <input type="number" id="testDuration" placeholder="10" min="1" max="60" />
+      </div>
+    </div>
+    <div class="config-actions">
+      <div class="toggle-wrapper">
+        <label class="toggle-label" for="enableToggle">Auto-Tests</label>
+        <div class="toggle-track" id="toggleTrack">
+          <input type="checkbox" id="enableToggle" />
+          <span class="toggle-thumb"></span>
+        </div>
+        <span class="toggle-state" id="toggleState">Deaktiviert</span>
+      </div>
+      <button class="btn btn-primary" id="saveConfigBtn" onclick="saveConfig()">
+        <span class="btn-icon">💾</span> Speichern
+      </button>
+    </div>
+  </section>
+
+  <!-- ═══════════════════ TEST STARTEN ═══════════════════ -->
+  <section class="card card-run" id="section-run">
+    <div class="card-header">
+      <h2 class="card-title"><span class="icon">🚀</span> Test starten</h2>
+    </div>
+    <div class="run-content">
+      <div class="run-target" id="runTarget">Kein Ziel konfiguriert</div>
+      <button class="btn btn-run" id="runBtn" onclick="startManualTest()" disabled>
+        <span class="run-btn-icon">▶</span>
+        <span class="run-btn-text">Jetzt messen</span>
+      </button>
+      <div class="run-status-msg" id="runStatusMsg"></div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════ LIVE ANZEIGE ═══════════════════ -->
+  <section class="card card-live" id="section-live">
+    <div class="card-header">
+      <h2 class="card-title">
+        <span class="icon">📡</span> Live-Test
+        <span class="live-badge" id="liveBadge" style="display:none;">LIVE</span>
+      </h2>
+      <div class="test-type-badge" id="testTypeBadge" style="display:none;"></div>
+    </div>
+
+    <div class="live-meters">
+      <div class="meter-card download-meter">
+        <div class="meter-label">⬇ Download</div>
+        <div class="meter-value" id="dlValue">–</div>
+        <div class="meter-unit">Mbit/s</div>
+        <div class="meter-bar-wrap">
+          <div class="meter-bar" id="dlBar" style="width:0%"></div>
+        </div>
+      </div>
+      <div class="meter-card upload-meter">
+        <div class="meter-label">⬆ Upload</div>
+        <div class="meter-value" id="ulValue">–</div>
+        <div class="meter-unit">Mbit/s</div>
+        <div class="meter-bar-wrap">
+          <div class="meter-bar upload" id="ulBar" style="width:0%"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="live-details" id="liveDetails">
+      <div class="detail-item">
+        <span class="detail-label">Jitter</span>
+        <span class="detail-val" id="liveJitter">–</span>
+      </div>
+      <div class="detail-item">
+        <span class="detail-label">Paketverlust</span>
+        <span class="detail-val" id="liveLoss">–</span>
+      </div>
+      <div class="detail-item">
+        <span class="detail-label">Dauer</span>
+        <span class="detail-val" id="liveDuration">–</span>
+      </div>
+      <div class="detail-item">
+        <span class="detail-label">Retransmits</span>
+        <span class="detail-val" id="liveRetransmits">–</span>
+      </div>
+    </div>
+
+    <div class="live-idle" id="liveIdle">
+      <span class="idle-icon">💤</span>
+      <span>Kein Test aktiv</span>
+    </div>
+    <div class="live-error" id="liveError" style="display:none;"></div>
+  </section>
+
+  <!-- ═══════════════════ CHART ═══════════════════ -->
+  <section class="card card-chart" id="section-chart">
+    <div class="card-header">
+      <h2 class="card-title"><span class="icon">📊</span> Verlauf</h2>
+      <div class="chart-legend">
+        <span class="legend-dot dl"></span><span>Download</span>
+        <span class="legend-dot ul"></span><span>Upload</span>
+      </div>
+    </div>
+    <div class="chart-wrap">
+      <canvas id="speedChart"></canvas>
+    </div>
+  </section>
+
+  <!-- ═══════════════════ HISTORY TABELLE ═══════════════════ -->
+  <section class="card card-history" id="section-history">
+    <div class="card-header">
+      <h2 class="card-title"><span class="icon">📋</span> History</h2>
+      <button class="btn btn-export" id="exportBtn" onclick="exportExcel()">
+        <span class="btn-icon">📥</span> Excel Export
+      </button>
+    </div>
+    <div class="table-wrap">
+      <table class="history-table" id="historyTable">
+        <thead>
+          <tr>
+            <th>Zeit</th>
+            <th>Typ</th>
+            <th>Ziel</th>
+            <th>Download</th>
+            <th>Upload</th>
+            <th>Jitter</th>
+            <th>Verlust</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody id="historyBody">
+          <tr><td colspan="8" class="table-empty">Lade History...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+</main>
+
+<!-- Toast-Container -->
+<div class="toast-container" id="toastContainer"></div>
+
+<script src="/js/main.js"></script>
+</body>
+</html>
