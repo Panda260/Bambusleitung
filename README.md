@@ -199,21 +199,9 @@ Wird bei jedem Push auf `main` und bei Pull Requests ausgeführt.
 - Tags: `latest`, `sha-<commit>`, Semantic Versioning bei Tags (`v1.2.3`)
 - Nutzt GitHub Actions Cache für schnelle Builds
 
-### CD: SSH-Deploy
-
-Manuell auslösen oder automatisch bei Push auf `main`.
-
-Benötigte Repository-Secrets:
-
-| Secret | Beispiel |
-|---|---|
-| `DEPLOY_SSH_HOST` | `1.2.3.4` |
-| `DEPLOY_SSH_USER` | `ubuntu` |
-| `DEPLOY_SSH_KEY` | *(privater SSH-Key, PEM)* |
-| `DEPLOY_SSH_PORT` | `22` |
-| `DEPLOY_PATH` | `/opt/bambusleitung` |
 
 ---
+
 
 ## Architektur
 
