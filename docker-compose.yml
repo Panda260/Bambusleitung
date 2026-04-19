@@ -1,6 +1,6 @@
 services:
   bambusleitung:
-    image: ghcr.io/Panda260/bambusleitung:latest
+    image: ghcr.io/panda260/bambusleitung:latest
     container_name: bambusleitung
     restart: unless-stopped
 
@@ -29,8 +29,8 @@ services:
 
       # ── Web-UI Authentifizierung (optional) ───────────────────
       # Wenn UI_PASSWORD leer → kein Login nötig
-      - UI_PASSWORD=         # z.B. UI_PASSWORD=geheimesPasswort
-      - SECRET_KEY=          # Flask Session-Key (auto-generiert wenn leer)
+      - UI_PASSWORD= # z.B. UI_PASSWORD=geheimesPasswort
+      - SECRET_KEY= # Flask Session-Key (auto-generiert wenn leer)
 
     healthcheck:
       test: [ "CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5000/api/status')" ]
