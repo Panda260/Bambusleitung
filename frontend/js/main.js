@@ -195,6 +195,7 @@ function renderConfig() {
   setValue('targetPort', config.target_port || 5201);
   setValue('intervalMin', config.interval_minutes || 60);
   setValue('testDuration', config.test_duration || 10);
+  setValue('iperfParams', config.iperf_params || '');
   setToggle(config.enabled || false);
   updateRunTargetBadge();
 }
@@ -209,6 +210,7 @@ async function saveConfig() {
     target_port: parseInt(getValue('targetPort')) || 5201,
     interval_minutes: parseInt(getValue('intervalMin')) || 60,
     test_duration: parseInt(getValue('testDuration')) || 10,
+    iperf_params: getValue('iperfParams').trim(),
     enabled: document.getElementById('enableToggle').checked,
   };
 

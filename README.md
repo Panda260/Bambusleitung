@@ -99,6 +99,7 @@ Alle Einstellungen können über die Web-UI geändert werden. Die ENV-Variablen 
 | `IPERF_INTERVAL_MINUTES` | `15` | Test-Intervall in Minuten |
 | `IPERF_TEST_DURATION` | `10` | Testdauer pro Richtung (Sekunden) |
 | `IPERF_ENABLED` | `false` | Auto-Tests beim Start aktiviert? |
+| `IPERF_EXTRA_PARAMS`| *(leer)* | Zusätzliche iperf3 Parameter (z.B. `-u`) |
 | `UI_PASSWORD` | *(leer)* | Passwort für Web-UI – **leer = kein Schutz** |
 | `SECRET_KEY` | *(auto)* | Flask Session-Key – wird auto-generiert wenn leer |
 

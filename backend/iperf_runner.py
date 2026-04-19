@@ -5,6 +5,7 @@ import json
 import subprocess
 import threading
 import time
+import shlex
 from datetime import datetime
 
 # Globaler Test-State (Thread-safe via Lock)
@@ -36,7 +37,7 @@ def get_status():
     }
 
 
-def run_iperf3(target_ip: str, target_port: int, run_type: str, duration: int = 10, on_complete=None):
+def run_iperf3(target_ip: str, target_port: int, run_type: str, duration: int = 10, iperf_params: str = "", on_complete=None):
     """
     Startet iperf3 als Client gegen target_ip:target_port.
     Gibt (success: bool, result: dict) zurück.
@@ -59,9 +60,9 @@ def run_iperf3(target_ip: str, target_port: int, run_type: str, duration: int = 
         _emit("test_started", {"run_type": run_type, "target": f"{target_ip}:{target_port}"})
 
         # ------ Download-Test (Normal) ------
-        dl_result = _run_single(target_ip, target_port, duration, reverse=False)
+        dl_result = _run_single(target_ip, target_port, duration, reverse=False, iperf_params=iperf_params)
         # ------ Upload-Test (Reverse) ------
-        ul_result = _run_single(target_ip, target_port, duration, reverse=True)
+        ul_result = _run_single(target_ip, target_port, duration, reverse=True, iperf_params=iperf_params)
 
         success = dl_result["success"] or ul_result["success"]
         result = {
@@ -89,7 +90,7 @@ def run_iperf3(target_ip: str, target_port: int, run_type: str, duration: int = 
         test_lock.release()
 
 
-def _run_single(target_ip, target_port, duration, reverse=False):
+def _run_single(target_ip, target_port, duration, reverse=False, iperf_params=""):
     """Führt einen iperf3-Run aus und parst das JSON-Ergebnis."""
     cmd = [
         "iperf3",
@@ -101,6 +102,13 @@ def _run_single(target_ip, target_port, duration, reverse=False):
     ]
     if reverse:
         cmd.append("-R")
+    
+    if iperf_params:
+        try:
+            cmd.extend(shlex.split(iperf_params))
+        except ValueError:
+            # im Fehlerfall (z.B. ungeschlossene Anführungszeichen) stumpf splitten
+            cmd.extend(iperf_params.split())
 
     direction = "upload" if reverse else "download"
 

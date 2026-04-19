@@ -33,6 +33,7 @@ def _auto_run():
     target_ip = cfg.get("target_ip", "")
     target_port = cfg.get("target_port", 5201)
     duration = cfg.get("test_duration", 10)
+    iperf_params = cfg.get("iperf_params", "")
 
     if not target_ip:
         return
@@ -49,6 +50,7 @@ def _auto_run():
     def run():
         success, result = run_iperf3(
             target_ip, target_port, run_type="auto", duration=duration,
+            iperf_params=iperf_params,
             on_complete=_save_result_fn
         )
 

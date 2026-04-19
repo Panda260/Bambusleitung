@@ -57,6 +57,7 @@ ENV PATH="/opt/venv/bin:$PATH" \
     IPERF_INTERVAL_MINUTES=15 \
     IPERF_TEST_DURATION=10 \
     IPERF_ENABLED=false \
+    IPERF_EXTRA_PARAMS="" \
     UI_PASSWORD="" \
     SECRET_KEY=""
 

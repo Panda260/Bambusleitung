@@ -26,6 +26,7 @@ services:
       - IPERF_INTERVAL_MINUTES=15 # Intervall in Minuten (Default: 15)
       - IPERF_TEST_DURATION=10 # Testdauer in Sekunden
       - IPERF_ENABLED=false # Auto-Tests beim Start aktivieren?
+      - IPERF_EXTRA_PARAMS= # Zusätzliche Parameter für iperf3 (z.B. -u für UDP)
 
       # ── Web-UI Authentifizierung (optional) ───────────────────
       # Wenn UI_PASSWORD leer → kein Login nötig

@@ -66,6 +66,7 @@ DEFAULT_CONFIG = {
     "interval_minutes": int(os.environ.get("IPERF_INTERVAL_MINUTES", 15)),
     "test_duration":    int(os.environ.get("IPERF_TEST_DURATION", 10)),
     "enabled":          os.environ.get("IPERF_ENABLED", "false").lower() == "true",
+    "iperf_params":     os.environ.get("IPERF_EXTRA_PARAMS", ""),
 }
 
 
@@ -178,7 +179,7 @@ def get_config():
 def set_config():
     data = request.get_json(force=True)
     cfg = load_config()
-    for key in ("target_ip", "target_port", "interval_minutes", "test_duration", "enabled"):
+    for key in ("target_ip", "target_port", "interval_minutes", "test_duration", "enabled", "iperf_params"):
         if key in data:
             cfg[key] = data[key]
     save_config(cfg)
@@ -211,6 +212,7 @@ def manual_run():
     target_ip = cfg.get("target_ip", "").strip()
     target_port = cfg.get("target_port", 5201)
     duration = cfg.get("test_duration", 10)
+    iperf_params = cfg.get("iperf_params", "")
 
     if not target_ip:
         return jsonify({"success": False, "error": "Keine Ziel-IP konfiguriert."}), 400
@@ -218,6 +220,7 @@ def manual_run():
     def run():
         iperf_runner.run_iperf3(
             target_ip, target_port, run_type="manual", duration=duration,
+            iperf_params=iperf_params,
             on_complete=save_result
         )
 
