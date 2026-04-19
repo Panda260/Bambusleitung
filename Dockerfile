@@ -60,9 +60,7 @@ ENV PATH="/opt/venv/bin:$PATH" \
     UI_PASSWORD="" \
     SECRET_KEY=""
 
-# Non-root User
-RUN useradd -m -u 1001 bambusleitung && chown -R bambusleitung:bambusleitung /app /data
-USER bambusleitung
+
 
 EXPOSE 5000
 
